@@ -1,0 +1,70 @@
+---
+
+- name: create AIX user as per specification
+  user:
+    name: "{{ item.user_id }}"
+    password: "{{ id_pass | password_hash('sha512') }}"
+    group: "{{ group_name }}"
+    groups: "{{ item.groups }}"
+    comment: "{{ comment }}"
+    shell: "{{ user_shell }}"
+    #uid: "{{ uid_num.item }}"
+    attributes:
+      home: "/home/{{ item }}"
+      login: "{{ login_set }}"
+      rlogin: "{{ rlogin_set }}"
+      su: "{{ switch_user }]"
+      umask: "{{ umask_value }}"
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+
+- name: Update the parameters for AIX user
+  command: 'chuser loginretries=3 {{ item.userid }}'
+  tags: login_retries
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+
+- name: Update the parameters for AIX user
+  command: 'chuser rlogin=true {{ item.userid }}'
+  tags: rlogin
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+
+- name: Update the parameters for AIX user
+  command: 'chuser login=true {{ item.userid }}'
+  tags: login_setting
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+
+- name: Update the parameters for AIX user
+  command: 'chuser su=false {{ item.userid }}'
+  tags: switch_user_setting
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+    
+- name: Check the details of the users created
+  command: 'lsuser {{ item.user_id }}'
+  tags: id_check
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1
+
+- name: Display the password of the User ID
+  debug:
+    msg: "The password set is: {{ item.password }}"
+  loop: "{{ USER_ID_Details }}"
+  when: 
+    - os_type == "AIX"
+    - item.user_id not in user_id_names1 
+    

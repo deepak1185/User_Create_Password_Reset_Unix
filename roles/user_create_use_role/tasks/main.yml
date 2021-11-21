@@ -1,0 +1,106 @@
+---
+    - name: check the windows server link
+      shell: 'hostname'
+      register: output
+
+    - name: copy the password generator script to generate password
+      script: '{{ role_path }}/files/password_generator.py'
+      args:
+        executable: "{{ ansible_python_interpreter }}"
+      register: pass_reg
+      #when: "'no such user' not in {{ id_check.stderr }}"
+      when: unique_id_password == False
+      
+    - name: print
+      debug:
+        msg: "{{ pass_reg.stdout_lines[0] }}"
+      when: unique_id_password == False
+
+    - set_fact:
+        id_pass: "{{  pass_reg.stdout_lines[0] }}"
+      when: unique_id_password == False
+      
+    - set_fact:
+        USER_ID_Details: |
+          {{ USER_ID_details | map('combine', { "password": "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=15') }}"}, { "group_name": "{{ group_name }}" }) | list }}
+        delegate_to: localhost  
+          
+    - set_fact:
+        USER_ID_details: "{{ USER_ID_Details }}"
+
+    - debug:
+        var: USER_ID_Details  
+
+#     - name: print password
+#       debug:
+#         msg: "{{ id_pass }}"
+
+    - block:
+    
+        - name: Confirm existence of user ID before delete
+          include_tasks: check_user_exists.yml 
+             
+        - name: create Linux user as per specification
+          include_tasks: create_user_linux.yml
+          when: os_type == "RedHat"
+      
+           
+        - name: create AIX user as per specification
+          include_tasks: create_user_aix.yml
+          when: os_type == "AIX"
+           
+           
+        - name: Set a password file for communication
+          shell: echo {{ item.password }} > /tmp/{{ item.user_id }}.txt
+          loop: "{{ USER_ID_details }}"
+          when:
+            - os_type == "RedHat"
+            - item.user_id not in user_id_names1
+
+
+        - name: Encrypt the password to be zipped and sent
+          shell: zip --password {{ zip_password }} /tmp/{{ item.user_id }}.zip /tmp/{{ item.user_id }}.txt
+          loop: "{{ USER_ID_details }}"
+          when:
+            - os_type == "RedHat"
+            - item.user_id not in user_id_names1   
+           
+       
+#         - name: Display the password of the User ID
+#           debug:
+#             msg: "The password set of {{ item.user_id }} is :  {{ id_pass }}"
+#           loop: "{{ USER_ID_details }}"
+#           when:
+#             - os_type == "AIX"
+#             - os_type == "RedHat"
+           
+         
+        - name: Send the details of the user id and password to the email address
+          mail:
+            subject: "*Confidential: {{ item.user_id }} user id created on {{ affected_host }}"
+            body: "Hello, User id {{ item.user_id }} created on server {{ affected_host }} \n password: {{ id_pass }}"
+            to: "{{ deepak.yachamaneni@ibm.com }}"
+          loop: "{{ USER_ID_details }}"
+          when: email_user == "True"
+          
+          
+        - name: Remove the password file
+          file:
+            path:  '/tmp/{{ item.user_id }}.txt'
+            state: absent
+          loop: "{{ USER_ID_details }}"
+          when:
+            - os_type == "RedHat"
+            - item.user_id not in user_id_names1
+
+        - name: Remove the password encrypted zip file
+          file:
+            path: '/tmp/{{ item.user_id }}.zip'
+            state: absent
+          loop: "{{ USER_ID_details }}"
+          when:
+            - os_type == "RedHat"
+            - item.user_id not in user_id_names1
+
+
+

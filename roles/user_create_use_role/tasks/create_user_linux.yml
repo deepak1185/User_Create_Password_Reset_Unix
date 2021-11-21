@@ -1,0 +1,26 @@
+---
+
+- block:
+    - name: create Linux user as per specification
+      user:
+        name: "{{ item.user_id }}"
+        password: "{{ id_pass | password_hash('sha512') }}"
+        group: "{{ group_name }}"
+        groups: "{{ item.groups }}"
+        comment: "{{ item.real_full_name }}"
+        shell: "{{ linux_shell }}"
+        #uid: "{{ uid_num.item }}"
+        home: "/home/{{ item.user_id }}"
+      loop: "{{ USER_ID_details }}"
+      when:
+        - os_type == "RedHat"
+        - item.user_id not in existing_users
+      
+    - name: Display the password of the User ID
+      debug:
+        msg: "The password set for {{ item.user_id }} is: {{ item.password }}"
+      loop: "{{ USER_ID_details }}"
+      when:
+        - os_type == "RedHat"
+        - item.user_id not in existing_users
+

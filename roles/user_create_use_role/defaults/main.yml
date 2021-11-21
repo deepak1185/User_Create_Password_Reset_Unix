@@ -1,0 +1,25 @@
+---
+# defaults file for user_create_use_role
+
+
+linux_shell: /bin/bash
+#uid: "{{ uid_num.item }}"
+login_set: true
+rlogin_set: true
+switch_user: false
+umask_value: 77
+loginretries_value: 3
+
+# Password which can be used for iterative password for each user id
+id_pass: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+os_type: "{{ ansible_facts['os_family'] }
+
+# Password to be made unique for each id
+unique_id_password: False
+
+# Email Option tp send password to as confidential email
+email_user: False
+
+# Inititalizing with a default password, Please update this variable in Ansible towersurvey options as a secret password
+zip_password: "pass123"
+

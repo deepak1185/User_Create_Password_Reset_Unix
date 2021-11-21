@@ -1,0 +1,11 @@
+---
+# defaults file for user_create_use_role
+ 
+linux_shell: /bin/bash
+#uid: "{{ uid_num.item }}"
+login_set: true
+rlogin_set: true
+switch_user: false
+umask_value: 77
+loginretries_value: 3
+pass_reg: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters,digits') }}"

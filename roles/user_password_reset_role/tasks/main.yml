@@ -1,0 +1,109 @@
+---
+    - name: print date from server
+      shell: >-
+         date +'%Y%m%d'
+      register: date_server
+      ignore_errors: yes
+
+    - name: check the windows server link
+      shell: 'hostname'
+      register: output
+
+    - name: print
+      debug:
+        msg: "{{ ansible_facts['os_family'] }}"
+
+    - name: check for the ID is present
+      shell: "id {{ item.user_id }}"
+      with_items: "{{ USER_ID_details }}"
+      ignore_errors: true
+      register: id_check
+
+    - name: copy the password generator script to generate password
+      script: 'password_generator.py'
+      args:
+        executable: "{{ ansible_python_interpreter }}"
+      register: pass_reg
+      #when: "'no such user' not in {{ id_check.stderr }}"
+      #when: item.id_check.stderr
+      #with_items: "{{ USER_IDS }}"
+
+    - name: print
+      debug:
+        msg: "{{ pass_reg }}"
+
+
+    - block:
+    
+        - name: Reset the password for Linux user as per specification
+          user:
+            name: "{{ item.user_id }}"
+            password: "{{ pass_reg | password_hash('sha512') }}"
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "RedHat"
+
+        - name: Reset the password for AIX user as per specification
+          user:
+            state: present
+            name: "{{ item.user_id }}"
+            password: "{{ pass_reg| password_hash('sha512') }}"
+            #attributes:
+              #umask: "{{ umask_value }}"
+              #login: "{{ login_set }}"
+              #rlogin: "{{ rlogin_set }}"
+              #su: "{{ switch_user }}"
+              #loginretries: "{{ loginretries_value }}"
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+          
+          
+        - name: Update the parameters for AIX user
+          command: 'chuser loginretries=3 {{ item.user_id }}'
+          tags: login_retries
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+
+        - name: Update the parameters for AIX user
+          command: 'chuser rlogin=true {{ item.user_id }}'
+          tags: rlogin
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+
+        - name: Update the parameters for AIX user
+          command: 'chuser login=true {{ item.user_id }}'
+          tags: login_setting
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+
+        - name: Update the parameters for AIX user
+          command: 'chuser su=false {{ item.user_id }}'
+          tags: switch_user_setting
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"  
+          
+        - name: Update the parameters for AIX user
+          command: 'chuser umask=77 {{ item.user_id }}'
+          tags: switch_user_setting
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+          
+        - name: Check the details of the users created
+          command: 'lsuser {{ item.user_id }}'
+          tags: id_check
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"
+          
+        - name: Display the password of the User ID
+          debug:
+            msg: "The password set is: {{ pass_reg }}"
+          loop: "{{ USER_ID_details }}"
+          when: os_type == "AIX"  
+            
+            
+        - name: Send the details of the user id and password to the email address
+          mail:
+            subject: "*Confidential: {{ item.user_id }} user id created on {{ affected_host }}"
+            body: "Hello, User id {{ item.user_id }} created on server {{ affected_host }} \n password: {{ pass_reg }}"
+            to: "{{ deepak.yachamaneni@ibm.com }}"
+          loop: "{{ USER_ID_details }}"
+

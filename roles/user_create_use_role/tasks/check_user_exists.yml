@@ -1,0 +1,38 @@
+---
+
+- name: get list of existing users
+  getent:
+    database: passwd
+  when: os_type == "RedHat" 
+    
+- debug:
+    var: getent_passwd
+  when: os_type == "RedHat"  
+
+- name: print
+  debug:
+    msg: "{{ ansible_facts['os_family'] }}"
+
+- name: get list of existing usernames
+  set_fact:
+    existing_users: "{{ ansible_facts.getent_passwd.keys() | list }}"
+  when: os_type == "RedHat"   
+
+- name: check for the ID is present
+  #shell: "id {{ item.user_id }}"
+  shell: grep "{{ item.user_id }}" /etc/passwd | awk -F":" '{print $1}'
+  loop: "{{ USER_ID_details }}"
+  ignore_errors: true
+  register: id_check
+
+- name: setting var
+  set_fact:
+    user_id_names1: "{{ user_id_names1|default([]) + [item.stdout] }}"
+  with_items: "{{ id_check.results }}"
+  when: item.stdout != ""
+
+- debug: var=user_id_names1
+
+
+
+

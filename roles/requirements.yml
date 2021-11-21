@@ -1,0 +1,6 @@
+---
+
+# Wrapper common roles
+
+- src: git+https://github.kyndryl.net/Continuous-Engineering/ansible-role-event-socks-tunnel.git
+  version: 20.3.0
